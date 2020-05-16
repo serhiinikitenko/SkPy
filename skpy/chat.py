@@ -448,10 +448,16 @@ class SkypeChats(SkypeObjs):
         for json in resp.get("conversations", []):
             cls = SkypeSingleChat
             if "threadProperties" in json:
-                info = self.skype.conn("GET", "{0}/threads/{1}".format(self.skype.conn.msgsHost, json.get("id")),
-                                       auth=SkypeConnection.Auth.RegToken,
-                                       params={"view": "msnp24Equivalent"}).json()
-                json.update(info)
+                try:
+                    info = self.skype.conn("GET", "{0}/threads/{1}".format(self.skype.conn.msgsHost, json.get("id")),
+                                           auth=SkypeConnection.Auth.RegToken,
+                                           params={"view": "msnp24Equivalent"}).json()
+                    json.update(info)
+                except SkypeApiException as e: # workaround
+                    if e.args[1].status_code in [403, 404]:
+                        continue
+                    else:
+                        raise e
                 cls = SkypeGroupChat
             chats[json.get("id")] = self.merge(cls.fromRaw(self.skype, json))
         return chats
